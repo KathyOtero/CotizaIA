@@ -1,0 +1,17 @@
+{
+  "name": "cotizaai-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prototipo Navegable de CotizaAI - Asistente de Cotizaciones para PYMES",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide": "^1.16.0"
+  },
+  "devDependencies": {
+    "vite": "^5.3.0"
+  }
+}

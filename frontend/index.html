@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CotizaAI - Prototipo Navegable (Avance 3)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a'
+            },
+            ai: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .pulse-ai { animation: pulse-subtle 2s infinite ease-in-out; }
+    @media print {
+      body * { visibility: hidden; }
+      #printable-pdf, #printable-pdf * { visibility: visible; }
+      #printable-pdf { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between border-r border-slate-800 select-none z-20">
+    <div>
+      <!-- Logo y Empresa -->
+      <div class="p-5 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-brand-600 to-ai-500 flex items-center justify-center text-white font-bold shadow-lg shadow-brand-500/30">
+            <i data-lucide="sparkles" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h1 class="font-extrabold text-white text-lg tracking-tight">Cotiza<span class="text-ai-500">AI</span></h1>
+            <p class="text-xs text-slate-400 font-medium">Asistente Comercial PYME</p>
+          </div>
+        </div>
+        <div class="mt-3 px-2 py-1.5 bg-slate-800/70 rounded-lg text-xs flex items-center justify-between">
+          <span class="text-slate-400">Pyme:</span>
+          <span class="text-emerald-400 font-semibold truncate">ClimaCaribe S.A.S.</span>
+        </div>
+      </div>
+
+      <!-- Menú de Navegación -->
+      <nav class="p-3 space-y-1">
+        <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all bg-brand-600 text-white shadow-md shadow-brand-600/30">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          Dashboard
+        </button>
+
+        <button onclick="navigate('nueva-ia')" id="nav-nueva-ia" class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-slate-800 text-slate-300">
+          <div class="flex items-center gap-3">
+            <i data-lucide="wand-2" class="w-4 h-4 text-ai-400"></i>
+            <span>Cotizar con IA</span>
+          </div>
+          <span class="px-1.5 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-ai-500/20 text-ai-300 rounded border border-ai-500/30">MVP</span>
+        </button>
+
+        <button onclick="navigate('cotizaciones')" id="nav-cotizaciones" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-slate-800 text-slate-300">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          Cotizaciones
+        </button>
+
+        <button onclick="navigate('catalogo')" id="nav-catalogo" class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-slate-800 text-slate-300">
+          <div class="flex items-center gap-3">
+            <i data-lucide="database" class="w-4 h-4"></i>
+            <span>Catálogo</span>
+          </div>
+          <span class="text-[10px] text-emerald-400 font-mono">pgvector</span>
+        </button>
+
+        <button onclick="navigate('clientes')" id="nav-clientes" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-slate-800 text-slate-300">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          Clientes
+        </button>
+      </nav>
+    </div>
+
+    <!-- Usuario y Rol Actual -->
+    <div class="p-4 border-t border-slate-800 bg-slate-950/40">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[11px] uppercase font-semibold text-slate-400 tracking-wider">Rol Activo:</span>
+        <select id="role-selector" onchange="toggleRole(this.value)" class="bg-slate-800 text-xs text-brand-400 font-semibold px-2 py-1 rounded border border-slate-700 outline-none">
+          <option value="vendedor">Vendedor</option>
+          <option value="administrador">Administrador</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs text-white">
+          KO
+        </div>
+        <div class="truncate text-xs">
+          <p class="font-medium text-white truncate" id="user-name">Kathy Otero</p>
+          <p class="text-slate-500 truncate" id="user-role-label">Comercial / Vendedor</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= CONTENIDO PRINCIPAL ================= -->
+  <main class="flex-1 flex flex-col overflow-hidden bg-slate-50">
+
+    <!-- Topbar -->
+    <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <h2 id="page-title" class="text-lg font-bold text-slate-800">Panel de Control Comercial</h2>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          FastAPI & pgvector activos
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-right text-xs">
+          <p class="text-slate-400">Margen Mínimo Empresa</p>
+          <p class="font-bold text-slate-700">25.0% (Configurable)</p>
+        </div>
+        <button onclick="navigate('nueva-ia')" class="bg-gradient-to-r from-brand-600 to-ai-600 hover:from-brand-700 hover:to-ai-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-md shadow-brand-500/20 flex items-center gap-2 transition-all">
+          <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
+          Nueva Cotización Asistida
+        </button>
+      </div>
+    </header>
+
+    <!-- Área de Vistas con Scroll -->
+    <div class="flex-1 overflow-y-auto p-6" id="view-container">
+
+      <!-- ================= 1. VISTA DASHBOARD ================= -->
+      <section id="view-dashboard" class="space-y-6">
+        <!-- Tarjetas de Métricas (RF19, RF20, RF21) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between text-slate-500 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider">Total Cotizado (Mes)</span>
+              <div class="p-2 rounded-lg bg-blue-50 text-blue-600"><i data-lucide="dollar-sign" class="w-4 h-4"></i></div>
+            </div>
+            <p class="text-2xl font-black text-slate-800">$ 48.500.000</p>
+            <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+              <i data-lucide="trending-up" class="w-3 h-3"></i> +14.2% vs mes anterior
+            </p>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between text-slate-500 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider">Tasa de Aceptación</span>
+              <div class="p-2 rounded-lg bg-emerald-50 text-emerald-600"><i data-lucide="check-circle-2" class="w-4 h-4"></i></div>
+            </div>
+            <p class="text-2xl font-black text-slate-800">68.4%</p>
+            <p class="text-xs text-slate-500 mt-1">26 aceptadas / 38 enviadas</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between text-slate-500 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider">Margen Promedio</span>
+              <div class="p-2 rounded-lg bg-indigo-50 text-indigo-600"><i data-lucide="pie-chart" class="w-4 h-4"></i></div>
+            </div>
+            <p class="text-2xl font-black text-slate-800">34.2%</p>
+            <p class="text-xs text-emerald-600 font-medium mt-1">Supera mínimo del 25%</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between text-slate-500 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider">Cotizaciones con IA</span>
+              <div class="p-2 rounded-lg bg-purple-50 text-purple-600"><i data-lucide="sparkles" class="w-4 h-4"></i></div>
+            </div>
+            <p class="text-2xl font-black text-slate-800">82%</p>
+            <p class="text-xs text-purple-600 font-medium mt-1">Ahorro de ~65% tiempo/cotización</p>
+          </div>
+        </div>
+
+        <!-- Banner Asistente Destacado -->
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-brand-950 rounded-2xl p-6 text-white shadow-lg flex items-center justify-between">
+          <div class="max-w-xl">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-ai-500/20 text-ai-300 border border-ai-500/30 text-xs font-semibold mb-3">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Asistente de IA (Human-in-the-Loop)
+            </div>
+            <h3 class="text-xl font-bold mb-1">Crea cotizaciones en segundos con lenguaje natural</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Describe lo que el cliente te pide por WhatsApp o llamada. CotizaAI buscará semánticamente los ítems exactos en tu catálogo local y te preparará un borrador editable con precios y márgenes protegidos.
+            </p>
+          </div>
+          <button onclick="navigate('nueva-ia')" class="px-5 py-3 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-sm shadow-md transition-all flex items-center gap-2">
+            Probar Asistente Ahora
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Tabla de Cotizaciones Recientes -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm">Cotizaciones Recientes</h4>
+              <p class="text-xs text-slate-400">Seguimiento de ciclo de vida comercial</p>
+            </div>
+            <button onclick="navigate('cotizaciones')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Ver todas &rarr;</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th class="p-3.5 font-semibold">Código</th>
+                  <th class="p-3.5 font-semibold">Cliente</th>
+                  <th class="p-3.5 font-semibold">Fecha</th>
+                  <th class="p-3.5 font-semibold">Total (COP)</th>
+                  <th class="p-3.5 font-semibold">Margen</th>
+                  <th class="p-3.5 font-semibold">Estado</th>
+                  <th class="p-3.5 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="recent-quotes-table">
+                <!-- Se llena dinámicamente con JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. VISTA CREAR COTIZACIÓN CON IA (EL FLUJO PRINCIPAL) ================= -->
+      <section id="view-nueva-ia" class="hidden space-y-6">
+        <!-- Encabezado del Flujo -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-ai-50 text-ai-700 border border-ai-200 text-xs font-semibold mb-1">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Flujo Asistido con Guardrails (RF13, RF22, RF23)
+            </div>
+            <h3 class="text-base font-bold text-slate-800">Generador de Cotización en Lenguaje Natural</h3>
+            <p class="text-xs text-slate-500">La IA interpreta tu descripción y propone ítems. Tú tienes el control final de confirmar o editar.</p>
+          </div>
+          <div class="text-right">
+            <span class="text-[11px] font-semibold text-slate-400 block">Paso 1 de 2:</span>
+            <span class="text-xs font-bold text-ai-600 bg-ai-50 px-2 py-1 rounded">Borrador Asistido</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Columna Izquierda: Entrada de Lenguaje Natural -->
+          <div class="lg:col-span-1 space-y-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+              <!-- Selector de Cliente -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">1. Seleccionar Cliente <span class="text-rose-500">*</span></label>
+                <select id="ai-cliente-select" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-brand-500 outline-none">
+                  <option value="1">Hotel Caribe Plaza (NIT 800.123.456-1)</option>
+                  <option value="2">Restaurante La Cevichera (NIT 900.234.567-2)</option>
+                  <option value="3">Clínica del Prado Cartagena (NIT 890.345.678-3)</option>
+                  <option value="4">Edificio Puerta del Mar PH (NIT 901.567.890-4)</option>
+                </select>
+              </div>
+
+              <!-- Cuadro de Prompt -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">2. Describe lo que necesita el cliente <span class="text-rose-500">*</span></label>
+                <textarea id="ai-prompt-input" rows="4" class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:border-ai-500 focus:ring-1 focus:ring-ai-500 outline-none resize-none leading-relaxed" placeholder="Ej: Se requiere mantenimiento de 3 aires acondicionados tipo split de 12000 BTU, recarga de gas r410a para 2 unidades y una revisión técnica general..."></textarea>
+              </div>
+
+              <!-- Ejemplos Rápidos -->
+              <div>
+                <span class="text-[11px] font-semibold text-slate-400 block mb-1.5">Ejemplos predefinidos para probar:</span>
+                <div class="space-y-1.5">
+                  <button onclick="loadSamplePrompt(1)" class="w-full text-left text-[11px] p-2 rounded-lg bg-slate-50 hover:bg-ai-50 border border-slate-200 hover:border-ai-200 text-slate-600 hover:text-ai-700 transition-all flex items-center justify-between">
+                    <span>Mantenimiento de 4 aires split + 2 recargas gas</span>
+                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400"></i>
+                  </button>
+                  <button onclick="loadSamplePrompt(2)" class="w-full text-left text-[11px] p-2 rounded-lg bg-slate-50 hover:bg-ai-50 border border-slate-200 hover:border-ai-200 text-slate-600 hover:text-ai-700 transition-all flex items-center justify-between">
+                    <span>Instalación de 2 aires 12000 BTU Inverter</span>
+                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400"></i>
+                  </button>
+                  <button onclick="loadSamplePrompt(3)" class="w-full text-left text-[11px] p-2 rounded-lg bg-slate-50 hover:bg-ai-50 border border-slate-200 hover:border-ai-200 text-slate-600 hover:text-ai-700 transition-all flex items-center justify-between">
+                    <span>Limpieza de 30 metros de ductos hospitalarios</span>
+                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-400"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Botón Generar -->
+              <button onclick="generarBorradorIA()" id="btn-generar-ia" class="w-full py-3 rounded-xl bg-gradient-to-r from-ai-600 to-brand-600 hover:from-ai-700 hover:to-brand-700 text-white font-bold text-xs shadow-lg shadow-ai-500/25 flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                Generar Borrador Asistido
+              </button>
+
+              <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-800 leading-normal flex gap-2">
+                <i data-lucide="shield-check" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                <span><strong>Guardrail activo:</strong> La IA solo lee el catálogo local. No puede cambiar precios ni crear registros definitivos sin tu autorización (RF22).</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Resultado del Borrador y Edición (Human-in-the-Loop) -->
+          <div class="lg:col-span-2 space-y-4">
+            <div id="ai-empty-state" class="bg-white p-12 rounded-2xl border border-slate-200/80 shadow-sm text-center flex flex-col items-center justify-center h-full min-h-[420px]">
+              <div class="w-14 h-14 rounded-2xl bg-ai-50 text-ai-500 flex items-center justify-center mb-3">
+                <i data-lucide="sparkles" class="w-7 h-7"></i>
+              </div>
+              <h4 class="text-sm font-bold text-slate-700 mb-1">Esperando requerimiento comercial</h4>
+              <p class="text-xs text-slate-400 max-w-sm">Escribe o selecciona un ejemplo a la izquierda y presiona "Generar Borrador Asistido" para ver la magia de los embeddings y el asistente.</p>
+            </div>
+
+            <!-- Panel del Borrador Generado -->
+            <div id="ai-draft-panel" class="hidden bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-5">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ai-100 text-ai-700 border border-ai-200 flex items-center gap-1">
+                      <i data-lucide="sparkles" class="w-3 h-3"></i> Sugerido por IA (RF23)
+                    </span>
+                    <span class="text-xs text-slate-400">Tabla temporal: <code>borradores_ia</code></span>
+                  </div>
+                  <h4 class="text-sm font-bold text-slate-800 mt-1" id="draft-client-name">Cliente: Hotel Caribe Plaza</h4>
+                </div>
+                <button onclick="descartarBorrador()" class="text-xs text-slate-400 hover:text-rose-600 font-semibold flex items-center gap-1">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Descartar
+                </button>
+              </div>
+
+              <!-- Lista de Ítems Sugeridos -->
+              <div class="space-y-3">
+                <div class="text-xs font-bold text-slate-700 flex justify-between">
+                  <span>Ítems Propuestos desde el Catálogo:</span>
+                  <span class="text-[11px] text-slate-400 font-normal">Puedes editar cantidades o descuentos libremente</span>
+                </div>
+                <div id="draft-items-list" class="space-y-2">
+                  <!-- Se genera dinámicamente -->
+                </div>
+              </div>
+
+              <!-- Descuento Global Opcional -->
+              <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span class="text-xs font-semibold text-slate-700">Descuento Global Comercial (%):</span>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="global-discount-input" value="0" min="0" max="50" onchange="recalcularTotales()" class="w-20 text-xs p-1.5 text-center font-bold rounded-lg border border-slate-200 bg-white">
+                  <span class="text-xs text-slate-500">%</span>
+                </div>
+              </div>
+
+              <!-- Medidor de Margen & Alerta (RF10, RF11, HU-07) -->
+              <div id="margin-alert-box" class="p-3.5 rounded-xl border transition-all flex items-center justify-between">
+                <!-- Se actualiza con recalcularTotales() -->
+              </div>
+
+              <!-- Resumen Financiero -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div>
+                  <span class="text-[11px] text-slate-400 block">Subtotal</span>
+                  <span class="text-sm font-bold text-slate-800" id="draft-subtotal">$ 0</span>
+                </div>
+                <div>
+                  <span class="text-[11px] text-slate-400 block">Descuento</span>
+                  <span class="text-sm font-bold text-rose-600" id="draft-descuento">-$ 0</span>
+                </div>
+                <div>
+                  <span class="text-[11px] text-slate-400 block">IVA (19%)</span>
+                  <span class="text-sm font-bold text-slate-800" id="draft-iva">$ 0</span>
+                </div>
+                <div>
+                  <span class="text-[11px] text-slate-400 block">Total Final</span>
+                  <span class="text-base font-black text-brand-700" id="draft-total">$ 0</span>
+                </div>
+              </div>
+
+              <!-- Acción Definitiva (Human-in-the-Loop) -->
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <button onclick="descartarBorrador()" class="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-600">
+                  Descartar Borrador
+                </button>
+                <button onclick="confirmarYCrearCotizacion()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2">
+                  <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                  Aceptar y Crear Cotización Oficial (RF22)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. VISTA LISTA DE COTIZACIONES ================= -->
+      <section id="view-cotizaciones" class="hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Histórico de Cotizaciones</h3>
+            <p class="text-xs text-slate-400">Control de estados, trazabilidad y descarga de PDF</p>
+          </div>
+          <button onclick="navigate('nueva-ia')" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Nueva Cotización
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th class="p-3.5 font-semibold">Código</th>
+                  <th class="p-3.5 font-semibold">Cliente</th>
+                  <th class="p-3.5 font-semibold">Fecha Emisión</th>
+                  <th class="p-3.5 font-semibold">Total</th>
+                  <th class="p-3.5 font-semibold">Margen</th>
+                  <th class="p-3.5 font-semibold">Origen</th>
+                  <th class="p-3.5 font-semibold">Estado</th>
+                  <th class="p-3.5 font-semibold text-right">Acción Comercial</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="all-quotes-table">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. VISTA CATÁLOGO Y BÚSQUEDA SEMÁNTICA ================= -->
+      <section id="view-catalogo" class="hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-bold text-slate-800">Catálogo de Productos y Servicios</h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-100 text-purple-700 font-bold">pgvector 384-dim</span>
+            </div>
+            <p class="text-xs text-slate-400">Búsqueda semántica por significado con embeddings locales (RF06, RF07)</p>
+          </div>
+          
+          <!-- Buscador Semántico Interactivo -->
+          <div class="relative w-full md:w-80">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="catalog-search-input" onkeyup="filtrarCatalogoSemantico(this.value)" placeholder="Prueba buscar 'arreglo de frío'..." class="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-brand-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Banner explicativo de búsqueda semántica -->
+        <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
+            <span><strong>Prueba la Búsqueda Semántica:</strong> Escribe <em>"reparar tubería de frío"</em> o <em>"aire no prende"</em> para ver cómo el algoritmo encuentra el servicio aunque no coincida la palabra exacta.</span>
+          </div>
+          <button onclick="testSemanticSearch('arreglo de frio')" class="text-xs font-bold text-blue-700 underline">Probar ejemplo</button>
+        </div>
+
+        <!-- Grid de Items del Catálogo -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="catalog-grid">
+          <!-- Dinámico -->
+        </div>
+      </section>
+
+      <!-- ================= 5. VISTA CLIENTES ================= -->
+      <section id="view-clientes" class="hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Directorio de Clientes (MiPymes)</h3>
+            <p class="text-xs text-slate-400">Gestión de datos con consentimiento Habeas Data Ley 1581 (RNF02)</p>
+          </div>
+          <button class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Nuevo Cliente
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="clients-grid">
+          <!-- Dinámico -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ================= MODAL VISTA PREVIA PDF DE COTIZACIÓN ================= -->
+  <div id="pdf-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <!-- Barra del Modal -->
+      <div class="p-4 bg-slate-900 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-check" class="w-4 h-4 text-emerald-400"></i>
+          <h4 class="text-xs font-bold uppercase tracking-wider">Vista Previa de Cotización Oficial (PDF)</h4>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold flex items-center gap-1">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i> Imprimir / Guardar PDF
+          </button>
+          <button onclick="cerrarPDF()" class="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hoja PDF Renderizada -->
+      <div class="p-8 overflow-y-auto flex-1 font-sans text-slate-800" id="printable-pdf">
+        <div class="border-b-2 border-brand-700 pb-5 mb-5 flex justify-between items-start">
+          <div>
+            <h1 class="text-xl font-extrabold text-brand-800 tracking-tight">CLIMACARIBE SOLUCIONES S.A.S.</h1>
+            <p class="text-xs text-slate-500 font-medium">NIT: 901.458.789-2 | Régimen Común</p>
+            <p class="text-xs text-slate-500">Manga Callejón Baloco Cra 22 # 24-10, Cartagena de Indias</p>
+            <p class="text-xs text-slate-500">Tel: (605) 664-9821 | comercial@climacaribe.com</p>
+          </div>
+          <div class="text-right">
+            <span class="px-3 py-1 bg-brand-50 border border-brand-200 text-brand-700 font-bold rounded text-xs block mb-1" id="pdf-codigo">COT-2026-008</span>
+            <p class="text-xs text-slate-500">Fecha: <strong id="pdf-fecha">08/10/2026</strong></p>
+            <p class="text-xs text-slate-500">Validez: <strong>15 días</strong></p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-2 text-xs">
+          <div>
+            <span class="text-slate-400 block text-[10px] uppercase font-bold">Cliente</span>
+            <p class="font-bold text-slate-800 text-sm" id="pdf-cliente">Hotel Caribe Plaza</p>
+            <p class="text-slate-600" id="pdf-nit">NIT: 800.123.456-1</p>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 block text-[10px] uppercase font-bold">Asesor Comercial</span>
+            <p class="font-bold text-slate-800">Kathy Otero</p>
+            <p class="text-slate-600">Ventas Corporativas</p>
+          </div>
+        </div>
+
+        <!-- Tabla de Ítems en el PDF -->
+        <table class="w-full text-left text-xs mb-6">
+          <thead class="border-b-2 border-slate-200 text-slate-600">
+            <tr>
+              <th class="py-2">Ítem / Servicio</th>
+              <th class="py-2 text-center">Cant.</th>
+              <th class="py-2 text-right">Precio Unit.</th>
+              <th class="py-2 text-right">Desc.</th>
+              <th class="py-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100" id="pdf-items-body">
+            <!-- Dinámico -->
+          </tbody>
+        </table>
+
+        <!-- Totales en el PDF -->
+        <div class="flex justify-end mb-6">
+          <div class="w-64 space-y-1.5 text-xs">
+            <div class="flex justify-between text-slate-600">
+              <span>Subtotal:</span>
+              <span id="pdf-subtotal">$ 0</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Descuento Global:</span>
+              <span id="pdf-descuento">-$ 0</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>IVA (19%):</span>
+              <span id="pdf-iva">$ 0</span>
+            </div>
+            <div class="border-t border-slate-200 pt-1.5 flex justify-between font-bold text-sm text-slate-900">
+              <span>TOTAL (COP):</span>
+              <span id="pdf-total" class="text-brand-700">$ 0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-500 leading-normal">
+          <p class="font-bold mb-0.5">Términos y Condiciones:</p>
+          <p>1. Esta oferta comercial no constituye factura electrónica. 2. Los trabajos incluyen garantía de 90 días sobre mano de obra. 3. Pago 50% de anticipo y 50% al finalizar las labores a satisfacción.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPTS DEL PROTOTIPO ================= -->
+  <script>
+    // Inicializar íconos
+    lucide.createIcons();
+
+    // Dataset Inicial en Memoria
+    const catalogo = [
+      { id: 1, nombre: "Mantenimiento Preventivo Aire Split", desc: "Lavado químico de serpentines, turbina, filtros, chequeo de presiones y amperaje", cat: "Climatización", unidad: "Servicio", costo: 45000, precio: 90000, keywords: ["split", "lavado", "limpieza", "mantenimiento", "aire", "frio"] },
+      { id: 2, nombre: "Mantenimiento Preventivo Aire Central", desc: "Mantenimiento a unidades centrales Fan Coil, lavado de condensadora y desinfección", cat: "Climatización", unidad: "Servicio", costo: 95000, precio: 180000, keywords: ["central", "fancoil", "frio", "mantenimiento"] },
+      { id: 3, nombre: "Recarga de Gas Refrigerante R410A", desc: "Carga de refrigerante ecológico R410A con prueba de estanqueidad y vacío", cat: "Repuestos", unidad: "Libra", costo: 30000, precio: 65000, keywords: ["gas", "refrigerante", "r410a", "recarga", "presion"] },
+      { id: 4, nombre: "Instalación Aire 12000 BTU Inverter", desc: "Instalación básica que incluye kit de cobre 3m, ménsulas y bomba de vacío", cat: "Instalaciones", unidad: "Instalación", costo: 120000, precio: 250000, keywords: ["instalacion", "montaje", "inverter", "12000"] },
+      { id: 5, nombre: "Cambio de Capacitor de Arranque 45uF", desc: "Suministro e instalación de capacitor de marcha para compresor", cat: "Repuestos", unidad: "Unidad", costo: 25000, precio: 60000, keywords: ["capacitor", "arranque", "electrico", "compresor", "falla"] },
+      { id: 6, nombre: "Limpieza y Desinfección de Ductos", desc: "Aplicación de bactericida hospitalario y cepillado mecánico de ductería", cat: "Climatización", unidad: "Metro", costo: 15000, precio: 35000, keywords: ["ductos", "desinfeccion", "hospital", "limpieza"] },
+      { id: 7, nombre: "Reemplazo de Motor Ventilador Condensador", desc: "Suministro y calibración de motor de unidad exterior", cat: "Repuestos", unidad: "Unidad", costo: 110000, precio: 220000, keywords: ["motor", "ventilador", "soplador", "condensador"] },
+      { id: 8, nombre: "Visita de Diagnóstico Técnico en Sitio", desc: "Inspección técnica especializada para levantamiento de falla", cat: "Servicios", unidad: "Visita", costo: 20000, precio: 50000, keywords: ["visita", "diagnostico", "revision", "inspeccion"] }
+    ];
+
+    const clientes = [
+      { id: 1, nombre: "Hotel Caribe Plaza", nit: "800.123.456-1", tel: "3001234567", dir: "Bocagrande Cra 2 # 5-40, Cartagena", cotizaciones: 5 },
+      { id: 2, nombre: "Restaurante La Cevichera", nit: "900.234.567-2", tel: "3109876543", dir: "Centro Histórico, Cartagena", cotizaciones: 2 },
+      { id: 3, nombre: "Clínica del Prado Cartagena", nit: "890.345.678-3", tel: "3154567890", dir: "Manga Callejón Baloco, Cartagena", cotizaciones: 8 },
+      { id: 4, nombre: "Edificio Puerta del Mar PH", nit: "901.567.890-4", tel: "3017890123", dir: "Crespo Av Santander, Cartagena", cotizaciones: 1 }
+    ];
+
+    let cotizaciones = [
+      { id: 1, codigo: "COT-2026-001", clienteId: 1, cliente: "Hotel Caribe Plaza", fecha: "04/10/2026", total: 1450000, margen: 36.5, estado: "aceptada", origenIA: true },
+      { id: 2, codigo: "COT-2026-002", clienteId: 2, cliente: "Restaurante La Cevichera", fecha: "06/10/2026", total: 340000, margen: 31.0, estado: "enviada", origenIA: false },
+      { id: 3, codigo: "COT-2026-003", clienteId: 3, cliente: "Clínica del Prado Cartagena", fecha: "07/10/2026", total: 2850000, margen: 38.2, estado: "enviada", origenIA: true },
+      { id: 4, codigo: "COT-2026-004", clienteId: 4, cliente: "Edificio Puerta del Mar PH", fecha: "08/10/2026", total: 520000, margen: 28.0, estado: "borrador", origenIA: false }
+    ];
+
+    let borradorActual = null;
+
+    // Navegación entre Vistas
+    function navigate(viewId) {
+      document.querySelectorAll('#view-container > section').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById('view-' + viewId).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('bg-brand-600', 'text-white', 'shadow-md', 'shadow-brand-600/30');
+        btn.classList.add('text-slate-300');
+      });
+
+      const activeNav = document.getElementById('nav-' + viewId);
+      if (activeNav) {
+        activeNav.classList.add('bg-brand-600', 'text-white', 'shadow-md', 'shadow-brand-600/30');
+        activeNav.classList.remove('text-slate-300');
+      }
+
+      const titles = {
+        'dashboard': 'Panel de Control Comercial',
+        'nueva-ia': 'Asistente de Cotizaciones con IA',
+        'cotizaciones': 'Directorio de Cotizaciones',
+        'catalogo': 'Catálogo de Productos y Búsqueda Semántica',
+        'clientes': 'Directorio de Clientes'
+      };
+      document.getElementById('page-title').innerText = titles[viewId] || 'CotizaAI';
+      lucide.createIcons();
+    }
+
+    // Cambiar Rol
+    function toggleRole(rol) {
+      document.getElementById('user-role-label').innerText = rol === 'administrador' ? 'Administrador / Gerente' : 'Comercial / Vendedor';
+    }
+
+    // Renderizado de Tablas
+    function renderRecentQuotes() {
+      const tbody = document.getElementById('recent-quotes-table');
+      const allBody = document.getElementById('all-quotes-table');
+      if (!tbody) return;
+
+      const estadoStyles = {
+        'borrador': 'bg-slate-100 text-slate-700 border-slate-200',
+        'enviada': 'bg-blue-50 text-blue-700 border-blue-200',
+        'aceptada': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        'rechazada': 'bg-rose-50 text-rose-700 border-rose-200',
+        'vencida': 'bg-amber-50 text-amber-700 border-amber-200'
+      };
+
+      const rowsHtml = cotizaciones.map(c => `
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="p-3.5 font-bold font-mono text-brand-700">${c.codigo}</td>
+          <td class="p-3.5 font-semibold text-slate-800">${c.cliente}</td>
+          <td class="p-3.5 text-slate-500">${c.fecha}</td>
+          <td class="p-3.5 font-bold text-slate-800">$ ${c.total.toLocaleString('es-CO')}</td>
+          <td class="p-3.5 font-semibold ${c.margen >= 25 ? 'text-emerald-600' : 'text-rose-600'}">${c.margen}%</td>
+          <td class="p-3.5">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${estadoStyles[c.estado]}">${c.estado}</span>
+          </td>
+          <td class="p-3.5 text-right space-x-1">
+            <button onclick="verPDF(${c.id})" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold">
+              PDF
+            </button>
+            <button onclick="cicloEstado(${c.id})" class="px-2 py-1 rounded bg-brand-50 hover:bg-brand-100 text-brand-700 text-[11px] font-semibold">
+              Cambiar Estado
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      tbody.innerHTML = rowsHtml;
+      if (allBody) allBody.innerHTML = rowsHtml;
+      lucide.createIcons();
+    }
+
+    // Ciclo de máquina de estados de cotización
+    function cicloEstado(id) {
+      const c = cotizaciones.find(item => item.id === id);
+      if (!c) return;
+      const transiciones = {
+        'borrador': 'enviada',
+        'enviada': 'aceptada',
+        'aceptada': 'borrador',
+        'rechazada': 'borrador'
+      };
+      c.estado = transiciones[c.estado] || 'borrador';
+      renderRecentQuotes();
+    }
+
+    // Render Catálogo
+    function renderCatalog(items = catalogo) {
+      const container = document.getElementById('catalog-grid');
+      if (!container) return;
+      container.innerHTML = items.map(it => `
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase">${it.cat}</span>
+              <span class="text-[10px] text-emerald-600 font-bold">Vector 384d OK</span>
+            </div>
+            <h4 class="font-bold text-slate-800 text-xs mb-1">${it.nombre}</h4>
+            <p class="text-[11px] text-slate-500 leading-relaxed mb-3">${it.desc}</p>
+          </div>
+          <div class="border-t border-slate-100 pt-2 flex items-center justify-between text-xs">
+            <div>
+              <span class="text-[10px] text-slate-400 block">Precio Venta:</span>
+              <span class="font-bold text-slate-800">$ ${it.precio.toLocaleString('es-CO')}</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] text-slate-400 block">Margen:</span>
+              <span class="font-bold text-emerald-600">${Math.round(((it.precio - it.costo) / it.precio) * 100)}%</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    // Búsqueda Semántica Simulada
+    function filtrarCatalogoSemantico(query) {
+      const q = query.toLowerCase().trim();
+      if (!q) {
+        renderCatalog(catalogo);
+        return;
+      }
+      const filtrados = catalogo.filter(it => {
+        const matchKeyword = it.keywords.some(k => q.includes(k) || k.includes(q));
+        const matchText = it.nombre.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q);
+        return matchKeyword || matchText;
+      });
+      renderCatalog(filtrados);
+    }
+
+    function testSemanticSearch(term) {
+      document.getElementById('catalog-search-input').value = term;
+      filtrarCatalogoSemantico(term);
+    }
+
+    // Render Clientes
+    function renderClients() {
+      const container = document.getElementById('clients-grid');
+      if (!container) return;
+      container.innerHTML = clientes.map(cl => `
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="w-8 h-8 rounded-xl bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center">
+              ${cl.nombre.substring(0,2).toUpperCase()}
+            </span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Habeas Data OK
+            </span>
+          </div>
+          <div>
+            <h4 class="font-bold text-slate-800 text-xs">${cl.nombre}</h4>
+            <p class="text-[11px] text-slate-500 font-mono">NIT: ${cl.nit}</p>
+          </div>
+          <div class="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-100 pt-2">
+            <p><i data-lucide="phone" class="w-3 h-3 inline mr-1 text-slate-400"></i>${cl.tel}</p>
+            <p><i data-lucide="map-pin" class="w-3 h-3 inline mr-1 text-slate-400"></i>${cl.dir}</p>
+          </div>
+          <div class="border-t border-slate-100 pt-2 flex justify-between items-center text-xs">
+            <span class="text-slate-400 text-[10px]">${cl.cotizaciones} cotizaciones previas</span>
+            <button onclick="navigate('nueva-ia')" class="text-brand-600 font-bold hover:underline text-xs">Cotizar</button>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    // Cargar prompts de ejemplo
+    function loadSamplePrompt(num) {
+      const ejemplos = {
+        1: "Se requiere mantenimiento preventivo para 4 aires acondicionados split y recarga completa de gas refrigerante r410a para 2 de ellos en el área de recepción.",
+        2: "El cliente solicita cotización para suministro e instalación de 2 aires acondicionados de 12000 BTU Inverter para sus oficinas gerenciales.",
+        3: "Revisión técnica urgente y limpieza de 30 metros lineales de ductos de ventilación con desinfección bactericida."
+      };
+      document.getElementById('ai-prompt-input').value = ejemplos[num] || '';
+    }
+
+    // Flujo Asistido con IA
+    function generarBorradorIA() {
+      const prompt = document.getElementById('ai-prompt-input').value.trim();
+      if (!prompt) {
+        alert("Por favor ingresa una descripción de lo que solicita el cliente.");
+        return;
+      }
+
+      const clienteId = parseInt(document.getElementById('ai-cliente-select').value);
+      const clienteObj = clientes.find(c => c.id === clienteId);
+
+      const btn = document.getElementById('btn-generar-ia');
+      btn.innerHTML = `<span class="animate-spin inline-block mr-2">⚙️</span> Analizando semántica con pgvector...`;
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Generar Borrador Asistido`;
+        btn.disabled = false;
+
+        // Búsqueda de ítems basados en el prompt
+        let itemsSugeridos = [];
+        if (prompt.toLowerCase().includes("split") || prompt.toLowerCase().includes("mantenimiento")) {
+          itemsSugeridos.push({ ...catalogo[0], cantidad: 4, descuentoPct: 0 });
+        }
+        if (prompt.toLowerCase().includes("gas") || prompt.toLowerCase().includes("recarga")) {
+          itemsSugeridos.push({ ...catalogo[2], cantidad: 2, descuentoPct: 0 });
+        }
+        if (prompt.toLowerCase().includes("instalacion") || prompt.toLowerCase().includes("inverter")) {
+          itemsSugeridos.push({ ...catalogo[3], cantidad: 2, descuentoPct: 0 });
+        }
+        if (prompt.toLowerCase().includes("ducto")) {
+          itemsSugeridos.push({ ...catalogo[5], cantidad: 30, descuentoPct: 0 });
+        }
+        if (itemsSugeridos.length === 0) {
+          itemsSugeridos = [
+            { ...catalogo[0], cantidad: 2, descuentoPct: 0 },
+            { ...catalogo[7], cantidad: 1, descuentoPct: 0 }
+          ];
+        }
+
+        borradorActual = {
+          cliente: clienteObj,
+          items: itemsSugeridos,
+          descuentoGlobal: 0
+        };
+
+        // Mostrar panel del borrador
+        document.getElementById('ai-empty-state').classList.add('hidden');
+        document.getElementById('ai-draft-panel').classList.remove('hidden');
+        document.getElementById('draft-client-name').innerText = `Cliente: ${clienteObj.nombre} (${clienteObj.nit})`;
+
+        renderDraftItems();
+        recalcularTotales();
+        lucide.createIcons();
+      }, 700);
+    }
+
+    function renderDraftItems() {
+      const list = document.getElementById('draft-items-list');
+      if (!borradorActual || !list) return;
+
+      list.innerHTML = borradorActual.items.map((it, idx) => `
+        <div class="p-3 bg-ai-50/60 border border-ai-200 rounded-xl flex items-center justify-between text-xs transition-all">
+          <div class="space-y-0.5 max-w-sm">
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded bg-ai-200/80 text-ai-800 text-[10px] font-bold">✨ Sugerido IA</span>
+              <h5 class="font-bold text-slate-800">${it.nombre}</h5>
+            </div>
+            <p class="text-[11px] text-slate-500">${it.desc}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div>
+              <span class="text-[10px] text-slate-400 block text-center">Cant.</span>
+              <input type="number" min="1" value="${it.cantidad}" onchange="cambiarCantidadItem(${idx}, this.value)" class="w-14 text-center p-1 rounded-lg border border-slate-200 bg-white font-bold text-xs">
+            </div>
+            <div class="text-right w-24">
+              <span class="text-[10px] text-slate-400 block">Unitario</span>
+              <span class="font-bold text-slate-800">$ ${it.precio.toLocaleString('es-CO')}</span>
+            </div>
+            <button onclick="eliminarItemBorrador(${idx})" class="p-1 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function cambiarCantidadItem(idx, val) {
+      if (!borradorActual) return;
+      borradorActual.items[idx].cantidad = Math.max(1, parseFloat(val) || 1);
+      recalcularTotales();
+    }
+
+    function eliminarItemBorrador(idx) {
+      if (!borradorActual) return;
+      borradorActual.items.splice(idx, 1);
+      if (borradorActual.items.length === 0) {
+        descartarBorrador();
+        return;
+      }
+      renderDraftItems();
+      recalcularTotales();
+    }
+
+    function descartarBorrador() {
+      borradorActual = null;
+      document.getElementById('ai-draft-panel').classList.add('hidden');
+      document.getElementById('ai-empty-state').classList.remove('hidden');
+    }
+
+    function recalcularTotales() {
+      if (!borradorActual) return;
+      const descGlobal = parseFloat(document.getElementById('global-discount-input').value) || 0;
+      borradorActual.descuentoGlobal = descGlobal;
+
+      let subtotal = 0;
+      let costoTotal = 0;
+
+      borradorActual.items.forEach(it => {
+        subtotal += (it.precio * it.cantidad);
+        costoTotal += (it.costo * it.cantidad);
+      });
+
+      const montoDescuento = subtotal * (descGlobal / 100);
+      const baseGravable = subtotal - montoDescuento;
+      const iva = baseGravable * 0.19;
+      const total = baseGravable + iva;
+
+      // Margen comercial: (base - costo) / base * 100
+      const margen = baseGravable > 0 ? Math.round(((baseGravable - costoTotal) / baseGravable) * 1000) / 10 : 0;
+
+      document.getElementById('draft-subtotal').innerText = `$ ${Math.round(subtotal).toLocaleString('es-CO')}`;
+      document.getElementById('draft-descuento').innerText = `-$ ${Math.round(montoDescuento).toLocaleString('es-CO')}`;
+      document.getElementById('draft-iva').innerText = `$ ${Math.round(iva).toLocaleString('es-CO')}`;
+      document.getElementById('draft-total').innerText = `$ ${Math.round(total).toLocaleString('es-CO')}`;
+
+      // Alerta de Margen Mínimo (RF10, RF11, HU-07)
+      const box = document.getElementById('margin-alert-box');
+      const minimo = 25.0; // 25%
+
+      if (margen < minimo) {
+        box.className = "p-3.5 rounded-xl border bg-rose-50 border-rose-200 text-rose-900 flex items-center justify-between";
+        box.innerHTML = `
+          <div class="flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 flex-shrink-0"></i>
+            <div>
+              <p class="text-xs font-bold">⚠️ Alerta: Margen por debajo del mínimo permitido (${minimo}%)</p>
+              <p class="text-[11px] text-rose-700">El margen estimado es de solo <strong>${margen}%</strong> debido al descuento aplicado.</p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 bg-rose-600 text-white font-bold text-xs rounded-lg">${margen}%</span>
+        `;
+      } else {
+        box.className = "p-3.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 flex items-center justify-between";
+        box.innerHTML = `
+          <div class="flex items-center gap-2">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 flex-shrink-0"></i>
+            <div>
+              <p class="text-xs font-bold">Margen comercial saludable</p>
+              <p class="text-[11px] text-emerald-700">Rentabilidad calculada: <strong>${margen}%</strong> (Supera el umbral mínimo del ${minimo}%).</p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 bg-emerald-600 text-white font-bold text-xs rounded-lg">${margen}%</span>
+        `;
+      }
+      lucide.createIcons();
+
+      borradorActual.calculos = { subtotal, montoDescuento, iva, total, margen };
+    }
+
+    // Confirmación Humana Explícita (RF22)
+    function confirmarYCrearCotizacion() {
+      if (!borradorActual || !borradorActual.calculos) return;
+
+      const nuevoId = cotizaciones.length + 1;
+      const nuevaCot = {
+        id: nuevoId,
+        codigo: `COT-2026-00${nuevoId}`,
+        clienteId: borradorActual.cliente.id,
+        cliente: borradorActual.cliente.nombre,
+        fecha: "08/10/2026",
+        total: Math.round(borradorActual.calculos.total),
+        margen: borradorActual.calculos.margen,
+        estado: "borrador",
+        origenIA: true,
+        items: [...borradorActual.items],
+        calculos: { ...borradorActual.calculos }
+      };
+
+      cotizaciones.unshift(nuevaCot);
+      renderRecentQuotes();
+      descartarBorrador();
+      
+      alert(`¡Cotización ${nuevaCot.codigo} generada exitosamente!\nGuardada en la base de datos oficial como Borrador.`);
+      navigate('cotizaciones');
+    }
+
+    // Modal PDF
+    function verPDF(id) {
+      const cot = cotizaciones.find(c => c.id === id);
+      if (!cot) return;
+
+      document.getElementById('pdf-codigo').innerText = cot.codigo;
+      document.getElementById('pdf-fecha').innerText = cot.fecha;
+      document.getElementById('pdf-cliente').innerText = cot.cliente;
+      
+      const sub = Math.round(cot.total / 1.19);
+      const iva = Math.round(cot.total - sub);
+
+      document.getElementById('pdf-subtotal').innerText = `$ ${sub.toLocaleString('es-CO')}`;
+      document.getElementById('pdf-descuento').innerText = `-$ 0`;
+      document.getElementById('pdf-iva').innerText = `$ ${iva.toLocaleString('es-CO')}`;
+      document.getElementById('pdf-total').innerText = `$ ${cot.total.toLocaleString('es-CO')}`;
+
+      const tbody = document.getElementById('pdf-items-body');
+      tbody.innerHTML = `
+        <tr>
+          <td class="py-2.5 font-semibold">Servicio especializado de mantenimiento de climatización</td>
+          <td class="py-2.5 text-center">1</td>
+          <td class="py-2.5 text-right">$ ${sub.toLocaleString('es-CO')}</td>
+          <td class="py-2.5 text-right">0%</td>
+          <td class="py-2.5 text-right font-bold">$ ${sub.toLocaleString('es-CO')}</td>
+        </tr>
+      `;
+
+      document.getElementById('pdf-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function cerrarPDF() {
+      document.getElementById('pdf-modal').classList.add('hidden');
+    }
+
+    // Inicialización al cargar la página
+    window.addEventListener('DOMContentLoaded', () => {
+      renderRecentQuotes();
+      renderCatalog();
+      renderClients();
+    });
+  </script>
+</body>
+</html>
